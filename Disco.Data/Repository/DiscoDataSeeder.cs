@@ -16,11 +16,37 @@ namespace Disco.Data.Repository
             Database.SeedDeviceProfiles();
             Database.SeedJobTypes();
             Database.SeedJobSubTypes();
+            Database.SeedUserFlags();
 
             Database.SaveChanges();
 
             // Migration Maintenance
             Database.MigratePreDomainObjects();
+        }
+
+        public static void SeedUserFlags(this DiscoDataContext Database)
+        {
+            if (Database.UserFlags.Count(uf => uf.Name == "EOY Laptop") == 0)
+            {
+                Database.UserFlags.Add(new UserFlag
+                {
+                    Name = "EOY Laptop",
+                    Description = "Laptop collected for end-of-year return.",
+                    Icon = "laptop",
+                    IconColour = "cobalt"
+                });
+            }
+
+            if (Database.UserFlags.Count(uf => uf.Name == "EOY Charger") == 0)
+            {
+                Database.UserFlags.Add(new UserFlag
+                {
+                    Name = "EOY Charger",
+                    Description = "Charger collected for end-of-year return.",
+                    Icon = "plug",
+                    IconColour = "amber"
+                });
+            }
         }
 
         public static void SeedDeploymentId(this DiscoDataContext Database)

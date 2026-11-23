@@ -3,8 +3,88 @@
 @{
     var flagAssignments = Model.User.UserFlagAssignments.Select(a => Tuple.Create(a, UserFlagService.GetUserFlag(a.UserFlagId))).Where(g => g.Item2.permission.CanShow()).ToList();
     var activeAssignmentCount = flagAssignments.Count(a => !a.Item1.RemovedDate.HasValue);
+    var eoyFlags = UserFlagService.GetUserFlags()
+        .Where(f => f.flag.Name == "EOY Laptop" || f.flag.Name == "EOY Charger")
+        .OrderBy(f => f.flag.Name)
+        .ToList();
 }
 <div id="UserDetailTab-Flags" class="UserPart">
+    @if (eoyFlags.Count > 0)
+    {
+        <div id="User_Show_Flags_EOY" class="status">
+            <h4>End of Year Collection</h4>
+            @foreach (var eoyFlag in eoyFlags)
+            {
+                var activeAssignment = Model.User.UserFlagAssignments
+                    .FirstOrDefault(a => a.UserFlagId == eoyFlag.flag.Id && !a.RemovedDate.HasValue);
+                var checkedFlag = activeAssignment != null;
+                var canAdd = activeAssignment == null && eoyFlag.permission.CanAssign() && Model.User.CanAddUserFlag(eoyFlag.flag);
+                var canRemove = activeAssignment != null && activeAssignment.CanRemove();
+
+                <label class="EOYFlagOption">
+                    <input type="checkbox"
+                           class="eoyFlagCheckbox"
+                           data-userflagid="@eoyFlag.flag.Id"
+                           data-assignmentid="@(activeAssignment?.Id)"
+                           @(checkedFlag ? new MvcHtmlString("checked=\"checked\" ") : null)
+                           @((!checkedFlag && !canAdd) || (checkedFlag && !canRemove) ? new MvcHtmlString("disabled=\"disabled\" ") : null) />
+                    <i class="fa fa-@(eoyFlag.flag.Icon) fa-fw fa-lg d-@(eoyFlag.flag.IconColour)"></i>
+                    @eoyFlag.flag.Name
+                </label>
+
+                if (canAdd)
+                {
+                    using (Html.BeginForm(MVC.API.UserFlagAssignment.AddUser(), FormMethod.Post, new { @class = "eoyFlagAddForm" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="EOYFlagId" value="@eoyFlag.flag.Id" />
+                        <input type="hidden" name="id" value="@eoyFlag.flag.Id" />
+                        <input type="hidden" name="UserId" value="@Model.User.UserId" />
+                    }
+                }
+
+                if (canRemove)
+                {
+                    using (Html.BeginForm(MVC.API.UserFlagAssignment.RemoveUser(), FormMethod.Post, new { @class = "eoyFlagRemoveForm" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="EOYAssignmentId" value="@activeAssignment.Id" />
+                        <input type="hidden" name="id" value="@activeAssignment.Id" />
+                    }
+                }
+            }
+        </div>
+        <script type="text/javascript">
+            $(function () {
+                $('#User_Show_Flags_EOY').on('change', 'input.eoyFlagCheckbox', function () {
+                    const $checkbox = $(this);
+                    $checkbox.prop('disabled', true);
+
+                    if ($checkbox.is(':checked')) {
+                        const flagId = $checkbox.attr('data-userflagid');
+                        const $form = $('#User_Show_Flags_EOY')
+                            .find('form.eoyFlagAddForm')
+                            .filter(function () {
+                                return $(this).find('input[name="EOYFlagId"]').val() === flagId;
+                            });
+                        if ($form.length) {
+                            $form.submit();
+                        }
+                    } else {
+                        const assignmentId = $checkbox.attr('data-assignmentid');
+                        const $form = $('#User_Show_Flags_EOY')
+                            .find('form.eoyFlagRemoveForm')
+                            .filter(function () {
+                                return $(this).find('input[name="EOYAssignmentId"]').val() === assignmentId;
+                            });
+                        if ($form.length) {
+                            $form.submit();
+                        }
+                    }
+                });
+            });
+        </script>
+    }
     @if (flagAssignments.Count > 0)
     {
         <table id="userFlags">
